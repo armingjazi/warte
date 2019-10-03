@@ -15,17 +15,25 @@ function warte(options) {
     return payloads;
   };
 
-  let timerId = null;
+  const flush_and_process = () => {
+    if (to_process.length) {
+      const flush = to_process.slice();
+      to_process = [];
+      process(flush).then(payloads => onFinish(payloads));
+    }
+  };
 
+  let timerId = null;
   const run = () => {
     timerId = setTimeout(() => {
-      if (to_process.length) {
-        const flush = to_process.slice();
-        to_process = [];
-        process(flush).then(payloads => onFinish(payloads));
-      }
+      flush_and_process();
       run();
     }, flushIntervals);
+  };
+
+  const stop = () => {
+    flush_and_process();
+    clearTimeout(timerId);
   };
 
   run();
@@ -34,7 +42,7 @@ function warte(options) {
     keep: processor => processors.push(processor),
     process: payload => to_process.push(payload),
     onFinish: handler => (onFinish = handler),
-    stop: () => clearTimeout(timerId)
+    stop: stop
   };
 }
 
