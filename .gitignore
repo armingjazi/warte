@@ -82,3 +82,4 @@ typings/
 .idea/**/dynamic.xml
 .idea/**/uiDesigner.xml
 .idea/**/dbnavigator.xml
+/junit.xml
