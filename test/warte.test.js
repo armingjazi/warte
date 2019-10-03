@@ -1,67 +1,109 @@
 const Warte = require("../src/warte");
 
+const check = async function(condition) {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      if (condition()) resolve();
+      else reject();
+    }, 10);
+  }).catch(() => {
+    return check(condition);
+  });
+};
+
 describe("warte", function() {
-  it("processes promises in order for payload", async () => {
-    const resolveMock = jest.fn();
+  it("processes processors promises ", done => {
+    const warte = Warte({ flushIntervals: 10 });
 
-    const warte = Warte();
-
-    const async_a = () =>
+    const processor = () =>
       new Promise(resolve => {
         setTimeout(() => {
-          resolveMock("promiseA");
-          resolve("ResolvePromiseA");
-        }, 3);
+          done();
+          resolve();
+        }, 10);
       });
 
-    const async_b = () =>
-      new Promise(resolve => {
-        setTimeout(() => {
-          resolveMock("promiseB");
-          resolve("ResolvePromiseB");
-        }, 1);
-      });
+    warte.keep(processor);
 
-    warte.keep(async_a);
-    warte.keep(async_b);
-
-    await warte.process({});
-
-    expect(resolveMock).toHaveBeenNthCalledWith(2, "promiseA");
-    expect(resolveMock).toHaveBeenNthCalledWith(1, "promiseB");
+    warte.process({ payload: "test" });
   });
 
   it("processes payloads in all promises", async () => {
-    const resolveMock = jest.fn();
+    expect.assertions(2);
 
-    const warte = Warte();
+    const resolved = jest.fn();
 
-    const async_a = payload =>
-      new Promise(resolve => {
-        setTimeout(() => {
-          resolveMock(payload);
-          resolve("ResolvePromiseA");
-        }, 3);
-      });
-
-    const async_b = payload =>
-      new Promise(resolve => {
-        setTimeout(() => {
-          resolveMock(payload);
-          resolve("ResolvePromiseB");
-        }, 1);
-      });
-
-    warte.keep(async_a);
-    warte.keep(async_b);
-
-    const payload = {
+    const expected_payload = {
       pay: "load"
     };
 
-    await warte.process(payload);
+    const warte = Warte({ flushIntervals: 10 });
 
-    expect(resolveMock).toHaveBeenNthCalledWith(1, payload);
-    expect(resolveMock).toHaveBeenNthCalledWith(2, payload);
+    const processor_a = payload =>
+      new Promise(resolve => {
+        setTimeout(() => {
+          resolved(payload);
+          resolve();
+        }, 3);
+      });
+
+    const processor_b = payload =>
+      new Promise(resolve => {
+        setTimeout(() => {
+          resolved(payload);
+          resolve();
+        }, 1);
+      });
+
+    warte.keep(processor_a);
+    warte.keep(processor_b);
+
+    warte.process(expected_payload);
+
+    await check(() => resolved.mock.calls.length === 2);
+
+    expect(resolved).toHaveBeenNthCalledWith(1, expected_payload);
+    expect(resolved).toHaveBeenNthCalledWith(2, expected_payload);
+  });
+
+  it("processes payloads in order", async () => {
+    expect.assertions(1);
+
+    const payload_1 = {
+      time: 15
+    };
+
+    const payload_2 = {
+      time: 1
+    };
+
+    const payload_3 = {
+      time: 10
+    };
+
+    const warte = Warte({ flushIntervals: 10 });
+
+    const processor = payload =>
+      new Promise(resolve => {
+        // NOTE: reordering the time it takes for payloads to be processed
+        setTimeout(() => {
+          resolve(payload);
+        }, payload.time);
+      });
+
+    const receivedPayloads = [];
+    warte.onFinish(payload => {
+      receivedPayloads.push(payload);
+    });
+
+    warte.keep(processor);
+
+    warte.process(payload_1);
+    warte.process(payload_2);
+    warte.process(payload_3);
+
+    await check(() => receivedPayloads.length === 3);
+
+    expect(receivedPayloads).toEqual([payload_1, payload_2, payload_3]);
   });
 });
