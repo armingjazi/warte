@@ -15,17 +15,16 @@ function warte(options) {
     return payloads;
   };
 
+  let timerId = null;
+
   const run = () => {
-    setTimeout(() => {
+    timerId = setTimeout(() => {
       if (to_process.length) {
         const flush = to_process.slice();
         to_process = [];
-        process(flush).then(payloads =>
-          payloads.forEach(payload => onFinish(payload))
-        );
-      } else {
-        run();
+        process(flush).then(payloads => onFinish(payloads));
       }
+      run();
     }, flushIntervals);
   };
 
@@ -34,7 +33,8 @@ function warte(options) {
   return {
     keep: processor => processors.push(processor),
     process: payload => to_process.push(payload),
-    onFinish: handler => (onFinish = handler)
+    onFinish: handler => (onFinish = handler),
+    stop: () => clearTimeout(timerId)
   };
 }
 

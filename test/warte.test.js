@@ -18,9 +18,11 @@ describe("warte", function() {
     const processor = () =>
       new Promise(resolve => {
         setTimeout(() => {
-          done();
           resolve();
         }, 10);
+      }).then(() => {
+        done();
+        warte.stop();
       });
 
     warte.keep(processor);
@@ -64,6 +66,8 @@ describe("warte", function() {
 
     expect(resolved).toHaveBeenNthCalledWith(1, expected_payload);
     expect(resolved).toHaveBeenNthCalledWith(2, expected_payload);
+
+    warte.stop();
   });
 
   it("processes payloads in order", async () => {
@@ -91,9 +95,9 @@ describe("warte", function() {
         }, payload.time);
       });
 
-    const receivedPayloads = [];
-    warte.onFinish(payload => {
-      receivedPayloads.push(payload);
+    let receivedPayloads = [];
+    warte.onFinish(payloads => {
+      receivedPayloads = payloads;
     });
 
     warte.keep(processor);
@@ -105,5 +109,6 @@ describe("warte", function() {
     await check(() => receivedPayloads.length === 3);
 
     expect(receivedPayloads).toEqual([payload_1, payload_2, payload_3]);
+    warte.stop();
   });
 });
