@@ -1,7 +1,7 @@
 {
   "name": "warte",
   "version": "1.0.0",
-  "description": "a promise queue processor",
+  "description": "a promise queue processor for payloads with unique id",
   "main": "index.js",
   "scripts": {
     "test:unit": "jest test",
