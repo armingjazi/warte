@@ -1,0 +1,55 @@
+version: 2.1
+
+executors:
+  node:
+    docker:
+      - image: circleci/node:12
+
+jobs:
+  build:
+    executor: node
+    steps:
+      - checkout
+      - run:
+          name: update-npm
+          command: "sudo npm install -g npm@latest"
+      - restore_cache:
+          key: dependency-cache-{{ checksum "package-lock.json" }}
+      - run:
+          name: npm ci
+          command: npm ci
+      - save_cache:
+          key: dependency-cache-{{ checksum "package-lock.json" }}
+          paths:
+            - ./node_modules
+      - persist_to_workspace:
+          root: /home/circleci/
+          paths:
+            - project
+
+  test:
+    executor: node
+    steps:
+      - attach_workspace:
+          at: /home/circleci
+      - run:
+          name: code-coverage
+          command: npm run test:coverage
+          environment:
+            JEST_JUNIT_OUTPUT_DIR: "reports/junit/"
+            JEST_JUNIT_OUTPUT_NAME: "js-test-results.xml"
+      - store_test_results:
+          path: reports/junit
+      - store_artifacts:
+          path: coverage
+      - store_artifacts:
+          path: reports/junit
+
+workflows:
+  version: 2
+  build-and-test:
+    jobs:
+      - build
+      - test:
+          requires:
+            - build
